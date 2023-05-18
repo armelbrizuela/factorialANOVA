@@ -1,0 +1,98 @@
+---
+title: "Respuestas de Práctica de ANOVA factorial"
+editor: visual
+editor_options: 
+  chunk_output_type: inline
+---
+
+Estos paquetes deben estar instalados:
+
+```{r}
+#| eval: false
+install.packages("hypr")
+install.packages("dplyr")
+install.packages("broom")
+install.packages("readr")
+install.packages("forcats")
+```
+
+Active los siguientes paquetes.
+
+```{r, warning = FALSE, message = FALSE}
+
+library(hypr)
+library(dplyr)
+library(broom)
+library(readr)
+library(forcats)
+```
+
+```{r}
+concentration <- read_delim("concentration.csv", delim = ";")
+```
+
+# Pregunta de investigación
+
+¿El tipo de música (rock, jazz, clásica) y la presencia de ruido de fondo (sin ruido, ruido moderado, ruido alto) afectan los niveles de concentración de las personas?
+
+# Diseño experimental
+
+Participantes: 270 estudiantes universitarios (30 por condición)
+
+Factor 1: Tipo de música. Los niveles del factor son rock, jazz y clásica.
+
+Factor 2: Nivel de ruido de fondo. Los niveles del factor son sin ruido, ruido moderado y ruido alto.
+
+Variable de respuesta: Nivel de concentración (medido en una escala del 1 al 10)
+
+# Procedimiento
+
+Los participantes se asignan al azar a una de las nueve condiciones (3 x 3). Cada participante es expuesto a la combinación asignada de tipo de música y nivel de ruido de fondo. Se les pide que resuelvan un crucigrama en 10 minutos. Después de completar la tarea, los participantes califican su nivel de concentración en una escala del 1 al 10.
+
+# Análisis
+
+Transforme las variables `musicType` y `background` en factores con la función `fct()`.
+
+```{r}
+
+```
+
+Calcule las medias de los 9 grupos con `summarise()`.
+
+```{r}
+
+```
+
+Muestre un gráfico de las medias con `cat_plot()`.
+
+```{r}
+
+```
+
+Defina los contrastes para los factores `musicType` y `background` con la función `contr.hypothesis()`.
+
+```{r}
+
+```
+
+Estime un modelo C y un modelo A. El modelo A debe incluir la interacción entre los factores.
+
+```{r}
+
+```
+
+Compare los modelos A y C con `anova()` para verificar si la interacción reduce significativamente el error.
+
+```{r}
+
+```
+
+Muestre los coeficientes de regresión del modelo A para indicar si las comparaciones de medias definidas anteriormente son estadísticamente significativas.
+
+```{r}
+
+```
+
+Responda la pregunta de investigación con base en los resultados.
+
+RESPUESTA:

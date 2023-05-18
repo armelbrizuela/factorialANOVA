@@ -1,0 +1,294 @@
+---
+title: "ANOVA factorial"
+format: 
+  html:
+    embed-resources: true
+editor: visual
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r}
+#| eval: false
+
+install.packages("hypr")
+install.packages("broom")
+install.packages("readr")
+install.packages("dplyr")
+install.packages("ggplot2")
+install.packages("forcats")
+install.packages("interactions")
+```
+
+```{r, warning = FALSE, message = FALSE}
+
+library(hypr)
+library(broom)
+library(dplyr)
+library(readr)
+library(forcats)
+library(interactions)
+```
+
+Continuamos con los distintos modelos que podemos estimar utilizando nuestro esquema básico:
+
+$$
+\text{DATOS} = \text{MODELO} + \text{ERROR}
+$$
+
+En la clase anterior, vimos el equivalente a un modelo de regresión simple en el que solamente se incluye un predictor. Dado que el predictor es categórico, utilizamos el nombre de **ANOVA** en lugar de regresión simple y al predictor le llamamos **factor** de $m$ niveles.
+
+$$
+Y_i = \beta_0 + \beta_1X_i + \varepsilon_i
+$$
+
+Ahora veremos el equivalente al modelo de regresión múltiple con dos predictores y una interacción. Dado que los predictores son categóricos, utilizamos el nombre de **ANOVA** **factorial** en lugar de regresión múltiple y a los predictores le llamamos **factores** de $m$ niveles.
+
+$$
+Y_i = \beta_0 + \beta_1X_{1i} + \beta_2X_{2i} + \varepsilon_i
+$$
+
+Vamos a ver el mismo ejemplo del libro (p. 205) para familiarizarnos con el ANOVA factorial.
+
+```{r}
+
+experiment <- read_table("psychotherapy.txt")
+```
+
+Este es un diseño $3 \space (\text{Drug}) \times 2 \space (\text{Psychotherapy})$, por lo que ahora podemos comparar las medias con base en `Psychotherapy`, en `Drug` o en `Psychotherapy` con `Drug`.
+
+```{r}
+
+experiment |>
+  summarise(.by = Psychotherapy, medias = mean(Mood))
+
+experiment |>
+  summarise(.by = Drug, medias = mean(Mood))
+
+medias <- experiment |>
+  summarise(.by = c(Drug, Psychotherapy), medias = mean(Mood))
+
+medias
+```
+
+Antes de estimar los modelos C(ompacto) y A(umentado) con `lm()`, debemos definir los contrastes de medias que nos interese.
+
+Para definir contrastes, primero debemos convertir las variables `Psychotherapy` y `Drug` en factores.
+
+```{r}
+
+experiment <- experiment |>
+  mutate(
+    Psychotherapy = fct(Psychotherapy, levels = c("Treatment", "Control")),
+    Drug = fct(Drug, levels = c("DrugA", "DrugB", "Placebo")))
+```
+
+Si no definimos ningún contraste, `lm()` utilizará una codificación por defecto que quizá no refleje las hipótesis del estudio.
+
+```{r}
+
+contrasts(experiment$Psychotherapy)
+contrasts(experiment$Drug)
+```
+
+Además, para este ejemplo también queremos comparar las medias de los 6 grupos definidos por la combinación de los niveles de `Psychotherapy` y de `Drug`.
+
+```{r}
+
+contrasts(interaction(experiment$Psychotherapy, experiment$Drug))
+```
+
+Si no definimos ningún contraste y utilizamos `lm()` para estimar los modelos A y C, R utilizará una codificación que quizá no refleje las comparaciones de interés.
+
+Estimemos los modelos C y A con estos contrastes. Tanto el modelo C como el modelo A son ANOVAs factoriales, pero el modelo A añade una interacción entre los predictores.
+
+```{r}
+
+modeloC <- lm(Mood ~ 1 + Psychotherapy + Drug, data = experiment)
+modeloA <- lm(Mood ~ 1 + Psychotherapy + Drug + Psychotherapy*Drug, data = experiment)
+```
+
+Veamos si la interacción es necesaria, es decir, veamos si la interacción reduce significativamente los residuos.
+
+```{r}
+
+tidy(anova(modeloC, modeloA))
+```
+
+Antes de ver los coeficientes, es conveniente generar un gráfico para facilitar la interpretación de las diferencias de medias.
+
+```{r}
+
+cat_plot(modeloA, 
+         pred = "Drug", 
+         modx = "Psychotherapy",
+         interval = FALSE,
+         plot.points = FALSE, 
+         geom = "line")
+
+cat_plot(modeloA, 
+         pred = "Psychotherapy", 
+         modx = "Drug",
+         interval = FALSE,
+         plot.points = FALSE, 
+         geom = "line")
+```
+
+Veamos los coeficientes de regresión estimados mediante `lm()`.
+
+```{r}
+tidy(modeloA, conf.int = T) |>
+  select(term, estimate, conf.low, conf.high, p.value) |>
+  mutate(across(where(is.numeric), \(x) round(x, 2)))
+```
+
+`(Intercept)`: Media de `Mood` cuando todos los predictores (contrastes) son iguales a 0. El intercepto es la media del grupo de referencia definido por los grupos de referencia de `Psychotherapy` y de `Drug`. Es decir, el intercepto es la media de quienes recibieron psicoterapia (`Treatment`) y tomaron el medicamento A (`DrugA`).
+
+![](intercept.jpeg){fig-align="center"}
+
+```{r}
+medias |>
+  filter(Drug == "DrugA" & Psychotherapy == "Treatment")
+```
+
+`PsychotherapyControl`: Diferencia de medias en `Mood` entre el grupo `Control` y el grupo `Treatment` para quienes fueron asignados al grupo `DrugA`.
+
+![](PsychotherapyControl.jpeg){fig-align="center"}
+
+```{r}
+
+medias |>
+  filter(Drug == "DrugA")
+
+17 - 32
+```
+
+`DrugDrugB`: Diferencia de medias en `Mood` entre los del grupo `DrugA` y los del grupo `DrugB` para quienes fueron asignados al grupo `Treatment`.
+
+![](DrugDrugB.jpeg)
+
+```{r}
+
+medias |>
+  filter(Psychotherapy == "Treatment" & Drug %in% c("DrugA", "DrugB"))
+
+26 - 32
+```
+
+`DrugPlacebo`: Diferencia de medias en `Mood` entre los del grupo `DrugA` y los del grupo `Placebo` para quienes fueron asignados al grupo `Treatment`.
+
+![](DrugPlacebo.jpeg){fig-align="center"}
+
+```{r}
+
+medias |>
+  filter(Psychotherapy == "Treatment" & Drug %in% c("DrugA", "Placebo"))
+
+17 - 32
+```
+
+`PsychotherapyControl:DrugDrugB`: Diferencia de diferencias en `Mood`. Se compara la diferencia en `Mood` entre `Control` y `Treatment` para los de `DrugB` con la diferencia entre `Control` y `Treatment` para los de `DrugA`.
+
+![](PsychotherapyControlDrugDrugB.jpeg){fig-align="center"}
+
+```{r}
+
+medias |>
+  filter(Psychotherapy %in% c("Treatment", "Control") & Drug %in% c("DrugA", "DrugB"))
+
+(19 - 26) - (17 - 32)
+```
+
+`PsychotherapyControl:DrugPlacebo`: Diferencia de diferencias en `Mood`. Se compara la diferencia en `Mood` entre `Control` y `Treatment` para los de `Placebo` con la diferencia entre `Control` y `Treatment` para los de `DrugA`.
+
+![](PsychotherapyControlDrugPlacebo.jpeg)
+
+```{r}
+
+medias |>
+  filter(Psychotherapy %in% c("Treatment", "Control") & Drug %in% c("DrugA", "Placebo"))
+
+(9 - 17) - (17 - 32)
+```
+
+Todas estas diferencias de medias podrían no contestar las preguntas de investigación de un estudio. En este escenario, es de vital importancia que podamos definir nuestros contrastes con base en hipótesis sustentadas teóricamente.
+
+Recordemos que si un factor tiene $m$ niveles, solo podemos crear $m-1$ niveles.
+
+```{r}
+
+contrasts(experiment$Drug) <- contr.hypothesis(
+  PvsAB = Placebo ~ (DrugA + DrugB)/2,
+  AvsB = DrugA ~ DrugB,
+  levels = c("DrugA", "DrugB", "Placebo"))
+
+contrasts(experiment$Psychotherapy) <- contr.hypothesis(
+  CvsT = Control ~ Treatment,
+  levels = c("Treatment", "Control"))
+```
+
+```{r}
+
+modeloA <- lm(Mood ~ 1 + Psychotherapy + Drug + Psychotherapy*Drug, data = experiment)
+```
+
+```{r}
+
+tidy(modeloA, conf.int = T) |>
+  select(term, estimate, conf.low, conf.high, p.value) |>
+  mutate(across(where(is.numeric), \(x) round(x, 2)))
+```
+
+`(Intercept)`: Media general o gran media de `Mood`, es decir, media de `Mood` sin tomar en cuenta el grupo.
+
+```{r}
+
+mean(experiment$Mood)
+```
+
+![](intercept2.png){fig-align="center"}
+
+`PsychotherapyCvsT`: Diferencia de medias en `Mood` entre `Control` y `Treatment`.
+
+```{r}
+
+(17 + 19 + 9)/3 - (32 + 26 + 17)/3
+```
+
+![](PsychotherapyCvsT.png){fig-align="center"}
+
+`DrugPvsAB`: Diferencia de medias en `Mood` entre `Placebo` y grupos `DrugA` y `DrugB`.
+
+```{r}
+
+(17 + 9)/2 - (17 + 32 + 26 + 19)/4
+```
+
+![](DrugPvsAB.png){fig-align="center"}
+
+`DrugAvsB`: Diferencia de medias en `Mood` entre `DrugA` y `DrugB`.
+
+```{r}
+
+(32 + 17)/2 - (19 + 26)/2
+```
+
+![](DrugAvsB.png){fig-align="center"}
+
+`PsychotherapyCvsT:DrugPvsAB`: Diferencia de diferencias en `Mood`. Se compara la diferencia en `Mood` entre `Placebo` y `DrugA` con `DrugB` para los de `Control` con la diferencia entre `Placebo` y `DrugA` con `DrugB` para los de `Treatment`.
+
+```{r}
+
+(9 - (17 + 19)/2) - (17 - (32 + 26)/2)
+```
+
+![](PsychotherapyCvsTDrugPvsAB.png){fig-align="center"}
+
+PsychotherapyCvsT:DrugAvsB: Diferencia de diferencias en `Mood`. Se compara la diferencia en `Mood` entre `DrugA` y `DrugB` para los de `Control` con la diferencia entre `DrugA` y `DrugB` para los de `Treatment`.
+
+```{r}
+
+(17 - 19) - (32 - 26)
+```
+
+![](PsychotherapyCvsTDrugAvsB.png){fig-align="center"}
