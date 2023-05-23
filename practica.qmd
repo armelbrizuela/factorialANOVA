@@ -14,6 +14,7 @@ install.packages("dplyr")
 install.packages("broom")
 install.packages("readr")
 install.packages("forcats")
+install.packages("interactions")
 ```
 
 Active los siguientes paquetes.
@@ -25,6 +26,7 @@ library(dplyr)
 library(broom)
 library(readr)
 library(forcats)
+library(interactions)
 ```
 
 ```{r}
@@ -39,9 +41,9 @@ concentration <- read_delim("concentration.csv", delim = ";")
 
 Participantes: 270 estudiantes universitarios (30 por condición)
 
-Factor 1: Tipo de música. Los niveles del factor son rock, jazz y clásica.
+Factor 1: Tipo de música. Los niveles del factor son rock, jazz y clásica
 
-Factor 2: Nivel de ruido de fondo. Los niveles del factor son sin ruido, ruido moderado y ruido alto.
+Factor 2: Nivel de ruido de fondo. Los niveles del factor son sin ruido, ruido moderado y ruido alto
 
 Variable de respuesta: Nivel de concentración (medido en una escala del 1 al 10)
 
@@ -63,12 +65,6 @@ Calcule las medias de los 9 grupos con `summarise()`.
 
 ```
 
-Muestre un gráfico de las medias con `cat_plot()`.
-
-```{r}
-
-```
-
 Defina los contrastes para los factores `musicType` y `background` con la función `contr.hypothesis()`.
 
 ```{r}
@@ -82,6 +78,12 @@ Estime un modelo C y un modelo A. El modelo A debe incluir la interacción entre
 ```
 
 Compare los modelos A y C con `anova()` para verificar si la interacción reduce significativamente el error.
+
+```{r}
+
+```
+
+Muestre un gráfico de las medias con `cat_plot()`.
 
 ```{r}
 

@@ -5,7 +5,7 @@ format:
     embed-resources: true
 editor: visual
 editor_options: 
-  chunk_output_type: inline
+  chunk_output_type: console
 ---
 
 ```{r}
@@ -45,7 +45,7 @@ $$
 Ahora veremos el equivalente al modelo de regresión múltiple con dos predictores y una interacción. Dado que los predictores son categóricos, utilizamos el nombre de **ANOVA** **factorial** en lugar de regresión múltiple y a los predictores le llamamos **factores** de $m$ niveles.
 
 $$
-Y_i = \beta_0 + \beta_1X_{1i} + \beta_2X_{2i} + \varepsilon_i
+Y_i = \beta_0 + \beta_1X_{1i} + \beta_2X_{2i} + \beta_3X_{1i}X_{2i} + \varepsilon_i
 $$
 
 Vamos a ver el mismo ejemplo del libro (p. 205) para familiarizarnos con el ANOVA factorial.
@@ -73,7 +73,7 @@ medias
 
 Antes de estimar los modelos C(ompacto) y A(umentado) con `lm()`, debemos definir los contrastes de medias que nos interese.
 
-Para definir contrastes, primero debemos convertir las variables `Psychotherapy` y `Drug` en factores.
+Para definir los contrastes, primero debemos convertir las variables `Psychotherapy` y `Drug` en variables tipo **factor**.
 
 ```{r}
 
@@ -88,6 +88,10 @@ Si no definimos ningún contraste, `lm()` utilizará una codificación por defec
 ```{r}
 
 contrasts(experiment$Psychotherapy)
+```
+
+```{r}
+
 contrasts(experiment$Drug)
 ```
 
@@ -104,8 +108,11 @@ Estimemos los modelos C y A con estos contrastes. Tanto el modelo C como el mode
 
 ```{r}
 
-modeloC <- lm(Mood ~ 1 + Psychotherapy + Drug, data = experiment)
-modeloA <- lm(Mood ~ 1 + Psychotherapy + Drug + Psychotherapy*Drug, data = experiment)
+modeloC <- lm(
+  Mood ~ 1 + Psychotherapy + Drug, data = experiment)
+
+modeloA <- lm(
+  Mood ~ 1 + Psychotherapy + Drug + Psychotherapy*Drug, data = experiment)
 ```
 
 Veamos si la interacción es necesaria, es decir, veamos si la interacción reduce significativamente los residuos.
@@ -126,6 +133,10 @@ cat_plot(modeloA,
          plot.points = FALSE, 
          geom = "line")
 
+```
+
+```{r}
+
 cat_plot(modeloA, 
          pred = "Psychotherapy", 
          modx = "Drug",
@@ -137,6 +148,7 @@ cat_plot(modeloA,
 Veamos los coeficientes de regresión estimados mediante `lm()`.
 
 ```{r}
+
 tidy(modeloA, conf.int = T) |>
   select(term, estimate, conf.low, conf.high, p.value) |>
   mutate(across(where(is.numeric), \(x) round(x, 2)))
@@ -147,6 +159,7 @@ tidy(modeloA, conf.int = T) |>
 ![](intercept.jpeg){fig-align="center"}
 
 ```{r}
+
 medias |>
   filter(Drug == "DrugA" & Psychotherapy == "Treatment")
 ```
@@ -213,23 +226,41 @@ medias |>
 
 Todas estas diferencias de medias podrían no contestar las preguntas de investigación de un estudio. En este escenario, es de vital importancia que podamos definir nuestros contrastes con base en hipótesis sustentadas teóricamente.
 
-Recordemos que si un factor tiene $m$ niveles, solo podemos crear $m-1$ niveles.
+Recordemos que si un factor tiene $m$ niveles, solo podemos crear $m-1$ comparaciones de medias.
 
 ```{r}
 
 contrasts(experiment$Drug) <- contr.hypothesis(
+  
   PvsAB = Placebo ~ (DrugA + DrugB)/2,
   AvsB = DrugA ~ DrugB,
+  
   levels = c("DrugA", "DrugB", "Placebo"))
 
-contrasts(experiment$Psychotherapy) <- contr.hypothesis(
-  CvsT = Control ~ Treatment,
-  levels = c("Treatment", "Control"))
+contrasts(experiment$Drug)
 ```
 
 ```{r}
 
-modeloA <- lm(Mood ~ 1 + Psychotherapy + Drug + Psychotherapy*Drug, data = experiment)
+contrasts(experiment$Psychotherapy) <- contr.hypothesis(
+  
+  CvsT = Control ~ Treatment,
+  
+  levels = c("Treatment", "Control"))
+
+contrasts(experiment$Psychotherapy)
+```
+
+```{r}
+
+
+modeloA <- lm(
+  Mood ~ 1 + Psychotherapy + Drug + Psychotherapy*Drug, data = experiment)
+```
+
+```{r}
+
+model.matrix(modeloA)
 ```
 
 ```{r}
@@ -239,7 +270,7 @@ tidy(modeloA, conf.int = T) |>
   mutate(across(where(is.numeric), \(x) round(x, 2)))
 ```
 
-`(Intercept)`: Media general o gran media de `Mood`, es decir, media de `Mood` sin tomar en cuenta el grupo.
+`(Intercept)`: Media general o gran media de `Mood`, es decir, la media de `Mood` sin tomar en cuenta el grupo.
 
 ```{r}
 
