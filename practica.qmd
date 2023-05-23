@@ -57,44 +57,90 @@ Transforme las variables `musicType` y `background` en factores con la función 
 
 ```{r}
 
+concentration <- concentration |>
+  mutate(
+    musicType = fct(
+      musicType, levels = c("rock", "jazz", "classical")),
+    background = fct(
+      background, levels = c("noNoise", "moderateNoise", "highNoise")))
+
 ```
 
 Calcule las medias de los 9 grupos con `summarise()`.
 
 ```{r}
 
+medias <- concentration |>
+  summarise(.by = c(musicType, background), medias = mean(concentrationLevel))
+
+medias
 ```
 
 Defina los contrastes para los factores `musicType` y `background` con la función `contr.hypothesis()`.
 
 ```{r}
 
+contrasts(concentration$musicType) <- contr.hypothesis(
+  
+  calmVSdin = classical ~ (jazz + rock)/2, 
+  jaVSro = jazz ~ rock,
+  
+  
+  levels = c("rock", "jazz", "classical"))
+```
+
+```{r}
+
+contrasts(concentration$background) <- contr.hypothesis(
+  
+  noSonvsSon = noNoise ~ (moderateNoise + highNoise)/2,  
+  modVShigh = moderateNoise ~ highNoise, 
+  
+  
+  levels = c("noNoise", "moderateNoise", "highNoise"))
 ```
 
 Estime un modelo C y un modelo A. El modelo A debe incluir la interacción entre los factores.
 
 ```{r}
 
+modeloC <- lm(
+  concentrationLevel ~ 1 + musicType + background,
+  data = concentration)
+
+modeloA <- lm(
+  concentrationLevel ~ 1 + musicType + background + musicType*background, 
+  data = concentration)
 ```
 
 Compare los modelos A y C con `anova()` para verificar si la interacción reduce significativamente el error.
 
 ```{r}
 
+anova(modeloC, modeloA)
 ```
 
 Muestre un gráfico de las medias con `cat_plot()`.
 
 ```{r}
 
+cat_plot(modeloA, 
+         pred = "background", 
+         modx = "musicType",
+         interval = TRUE,
+         plot.points = FALSE, 
+         geom = "line")
 ```
 
 Muestre los coeficientes de regresión del modelo A para indicar si las comparaciones de medias definidas anteriormente son estadísticamente significativas.
 
 ```{r}
 
+tidy(modeloA, conf.int = T) |>
+  select(term, estimate, conf.low, conf.high, p.value) |>
+  mutate(across(where(is.numeric), \(x) round(x, 2)))
 ```
 
 Responda la pregunta de investigación con base en los resultados.
 
-RESPUESTA:
+RESPUESTA: Hay un efecto interactivo entre la música y el nivel de ruido sobre la concentración. Esto implica que el efecto del ruido sobre la concentración depende del tipo de música, así como también el efecto del tipo de música sobre la concentración depende del nivel de ruido.
